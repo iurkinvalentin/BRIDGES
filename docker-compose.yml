@@ -1,0 +1,34 @@
+version: '3'
+services:
+  auth-service:
+    build: ./auth_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./auth_service:/app
+
+  message-service:
+    build: ./message_service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./message_service:/app
+
+  group-service:
+    build: ./group_service
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./group_service:/app
+
+  notification-service:
+    build: ./notification_service
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./notification_service:/app
+
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
