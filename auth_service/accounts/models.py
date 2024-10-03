@@ -1,10 +1,62 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 
 class CustomUser(AbstractUser):
-    # Добавьте дополнительные поля, если необходимо
-    bio = models.TextField(max_length=500, blank=True)
+    '''Пользовательская модель'''
+    email = models.EmailField(unique=True, max_length=255)
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        validators=[RegexValidator(r'^[\w.@+-]+$')],
+    )
 
     def __str__(self):
         return self.username
+
+
+class Profile(models.Model):
+    '''Модель профиля'''
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    bio = models.CharField(max_length=500, null=True, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    birthday = models.DateField(null=True, blank=True)
+    status_message = models.CharField(max_length=255, blank=True, null=True)
+    is_online = models.BooleanField(default=False)
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s profile"
+
+    def update_online_status(self):
+        if self.last_seen:
+            now = timezone.now()
+            if now - self.last_seen > timedelta(minutes=5):
+                self.is_online = False
+            else:
+                self.is_online = True
+            self.save()
+
+
+class Connection(models.Model):
+    '''Модель связей'''
+    from_user = models.ForeignKey(CustomUser,
+                                  related_name='outgoing_connections',
+                                  on_delete=models.CASCADE)
+    to_user = models.ForeignKey(CustomUser,
+                                related_name='incoming_connections',
+                                on_delete=models.CASCADE)
+    is_confirmed = models.BooleanField(default=False)  # Если двусторонняя связь, дружба подтверждена
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['from_user', 'to_user'], name='unique_connection')
+        ]
+
+    def __str__(self):
+        return f"{self.from_user.username} is connected with {self.to_user.username}"
+

@@ -1,6 +1,0 @@
-django
-djangorestframework
-djangorestframework-simplejwt
-channels
-channels-redis
-redis
