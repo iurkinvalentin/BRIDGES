@@ -41,7 +41,7 @@ class Profile(models.Model):
             self.save()
 
 
-class Connection(models.Model):
+class Connections(models.Model):
     '''Модель связей'''
     from_user = models.ForeignKey(CustomUser,
                                   related_name='outgoing_connections',

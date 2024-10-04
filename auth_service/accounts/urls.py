@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import LoginView, LogoutView, RegisterView, DeleteView, ProfileUpdateView
+from .views import LoginView, LogoutView, RegisterView, DeleteView, ProfileUpdateView, ContactManagementView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -13,4 +13,6 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('delete-user/', DeleteView.as_view(), name='delete-user'),
     path('update-user/', ProfileUpdateView.as_view(), name='update-user'),
+    path('contacts/', ContactManagementView.as_view(), name='contact_management'),
+    path('contacts/<int:pk>/', ContactManagementView.as_view(), name='contact_management_detail'),
 ]

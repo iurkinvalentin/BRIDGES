@@ -2,8 +2,9 @@ from rest_framework import permissions, status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import LoginSerializer, RegisterSerializer, ProfileUpdateSerializer, ProfileSerializer
-from .models import Profile
+from .serializers import LoginSerializer, RegisterSerializer, ProfileUpdateSerializer, ProfileSerializer, ConnectionsSerializer
+from .models import Profile, Connections, CustomUser
+from django.db.models import Q
 
 
 class LoginView(APIView):
@@ -112,3 +113,61 @@ class ProfileDetailView(generics.RetrieveAPIView):
         profile = self.request.user.profile
         profile.update_online_status()  # Обновляем статус перед возвратом профиля
         return profile
+
+
+class ContactManagementView(APIView):
+    """Управление запросами в контакты: отправка, подтверждение и удаление"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """Отправить запрос на добавление в контакты"""
+        from_user = request.user
+        to_user_id = request.data.get('to_user_id')
+
+        try:
+            to_user = CustomUser.objects.get(id=to_user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if Connections.objects.filter(from_user=from_user, to_user=to_user).exists():
+            return Response({"detail": "Request already sent"}, status=status.HTTP_400_BAD_REQUEST)
+
+        connection = Connections.objects.create(from_user=from_user, to_user=to_user)
+        return Response(ConnectionsSerializer(connection).data, status=status.HTTP_201_CREATED)
+
+    def patch(self, request, *args, **kwargs):
+        """Подтвердить запрос на добавление в контакты"""
+        connection_id = kwargs.get('pk')
+        try:
+            connection = Connections.objects.get(id=connection_id, to_user=request.user, is_confirmed=False)
+        except Connections.DoesNotExist:
+            return Response({"detail": "Request not found or already confirmed"}, status=status.HTTP_404_NOT_FOUND)
+
+        connection.is_confirmed = True
+        connection.save()
+        return Response(ConnectionsSerializer(connection).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, *args, **kwargs):
+        """Удалить контакт или отклонить запрос"""
+        connection_id = kwargs.get('pk')
+        try:
+            connection = Connections.objects.get(id=connection_id)
+            if request.user != connection.to_user and request.user != connection.from_user:
+                return Response({"detail": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+        except Connections.DoesNotExist:
+            return Response({"detail": "Connection not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        connection.delete()
+        return Response({"detail": "Connection removed"}, status=status.HTTP_204_NO_CONTENT)
+
+    def get(self, request, *args, **kwargs):
+        """Получить список всех подтвержденных контактов"""
+        user = request.user
+        # Получаем все подтвержденные связи, где текущий пользователь участвует как from_user или to_user
+        confirmed_connections = Connections.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            is_confirmed=True
+        )
+
+        serializer = ConnectionsSerializer(confirmed_connections, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

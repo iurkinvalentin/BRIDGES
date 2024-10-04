@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import CustomUser, Profile, Connection
+from .models import CustomUser, Profile, Connections
 from django.core.validators import RegexValidator
 from django.db import IntegrityError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -25,7 +25,7 @@ class LoginSerializer(serializers.Serializer):
             data['user'] = user
             return data
         raise serializers.ValidationError("Неверные учетные данные или учетная запись не активна.")
-    
+
     def create(self, validated_data):
         # Генерация JWT токенов
         user = validated_data['user']
@@ -111,7 +111,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class FriendshipSerializer(serializers.ModelSerializer):
+class ConnectionsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Connection
-        fields = ('from_user', 'to_user', 'created')
+        model = Connections
+        fields = '__all__'
